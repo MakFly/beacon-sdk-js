@@ -1,0 +1,35 @@
+{
+  "name": "@makfly/beacon-sdk-js",
+  "version": "0.1.0",
+  "description": "Beacon telemetry SDK for Next.js 16 / browser / node — errors, traces, logs. Home-grown, zero OTel/Sentry dependency.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MakFly/beacon-sdk-js.git"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": ["dist"],
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./nextjs": { "types": "./dist/nextjs.d.ts", "import": "./dist/nextjs.js" }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts ./src/nextjs.ts --outdir ./dist --target node --external '@makfly/*' && tsc --emitDeclarationOnly --declaration --outDir dist",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@makfly/beacon-protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.0"
+  },
+  "engines": { "node": ">=18" }
+}
