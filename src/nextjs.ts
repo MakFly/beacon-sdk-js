@@ -1,20 +1,44 @@
-import { HANDLER_TYPE, type EntryPointType } from "@makfly/beacon-protocol";
+import { HANDLER_TYPE, type EntryPointType, type ServiceStage } from "@makfly/beacon-protocol";
 import { getBeacon, initBeacon, type BeaconInit, type Beacon } from "./beacon";
 
 /**
  * Next.js 16 integration. Home-grown — no @vercel/otel, no @opentelemetry/*.
  *
- * Usage in `instrumentation.ts`:
- *   import { registerBeacon } from "@makfly/beacon-sdk-js/nextjs";
- *   export function register() {
- *     registerBeacon({ endpoint: process.env.BEACON_URL!, token: process.env.BEACON_TOKEN!,
- *                      resource: { "service.name": "iautos-web", "service.stage": "production" } });
- *   }
- *   export const onRequestError = createOnRequestError();
+ * Zero-config: `autoRegister()` reads BEACON_URL + BEACON_TOKEN from env.
+ * If absent, Beacon is silently disabled (no network, no overhead).
+ *
+ * The postinstall script (`bin/setup.mjs`) patches instrumentation.ts automatically.
  */
 
 export function registerBeacon(init: BeaconInit): Beacon {
   return initBeacon(init);
+}
+
+/**
+ * Auto-register from process.env. Returns the Beacon instance or null if disabled.
+ * Reads: BEACON_URL, BEACON_TOKEN, BEACON_SERVICE_NAME, NODE_ENV, DEPLOYMENT_VERSION, GITHUB_SHA.
+ */
+const STAGE_MAP: Record<string, ServiceStage> = {
+  production: "production",
+  staging: "staging",
+  development: "dev",
+  dev: "dev",
+};
+
+export function autoRegister(): Beacon | null {
+  const endpoint = process.env.BEACON_URL;
+  const token = process.env.BEACON_TOKEN;
+  if (!endpoint || !token) return null;
+
+  return initBeacon({
+    endpoint,
+    token,
+    resource: {
+      "service.name": process.env.BEACON_SERVICE_NAME ?? "unknown",
+      "service.stage": STAGE_MAP[process.env.NODE_ENV ?? "development"] ?? "dev",
+      "service.version": process.env.DEPLOYMENT_VERSION ?? process.env.GITHUB_SHA?.slice(0, 7) ?? "dev",
+    },
+  });
 }
 
 /** Next's error context (subset we read). */

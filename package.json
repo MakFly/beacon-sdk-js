@@ -14,13 +14,18 @@
   "publishConfig": {
     "access": "public"
   },
-  "files": ["dist"],
+  "bin": {
+    "beacon-setup": "./bin/setup.mjs"
+  },
+  "files": ["dist", "bin"],
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./nextjs": { "types": "./dist/nextjs.d.ts", "import": "./dist/nextjs.js" }
+    "./nextjs": { "types": "./dist/nextjs.d.ts", "import": "./dist/nextjs.js" },
+    "./presence": { "types": "./dist/presence.d.ts", "import": "./dist/presence.js" }
   },
   "scripts": {
-    "build": "bun build ./src/index.ts ./src/nextjs.ts --outdir ./dist --target node --external '@makfly/*' && tsc --emitDeclarationOnly --declaration --outDir dist",
+    "build": "bun build ./src/index.ts ./src/nextjs.ts --outdir ./dist --target node --external '@makfly/*' && bun build ./src/presence.ts --outdir ./dist --target browser --external '@makfly/*' && tsc --emitDeclarationOnly --declaration --outDir dist",
+    "postinstall": "node ./bin/setup.mjs || true",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
