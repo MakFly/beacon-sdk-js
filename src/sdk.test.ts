@@ -6,6 +6,7 @@ import { BeaconClient } from "./client";
 import { Tracer } from "./tracer";
 import { Beacon } from "./beacon";
 import { inspectInstrumentation, runSetup, setupSnippet } from "./setup";
+import { extractTraceContext, formatTraceparent, injectTraceContext, parseTraceparent } from "./propagation";
 import { SpanStatusCode } from "@makfly/beacon-protocol";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -22,6 +23,28 @@ describe("ids", () => {
   test("ids are unique across calls", () => {
     const ids = new Set(Array.from({ length: 100 }, generateTraceId));
     expect(ids.size).toBe(100);
+  });
+});
+
+describe("W3C propagation", () => {
+  const context = {
+    traceId: "0af7651916cd43dd8448eb211c80319c",
+    spanId: "b7ad6b7169203331",
+    sampled: true,
+    tracestate: "vendor=value",
+    baggage: "tenant=acme",
+  };
+
+  test("formats, injects and extracts traceparent/tracestate/baggage", () => {
+    expect(formatTraceparent(context)).toBe("00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01");
+    const headers = injectTraceContext(context, { accept: "application/json" });
+    expect(headers.accept).toBe("application/json");
+    expect(extractTraceContext(headers)).toEqual(context);
+  });
+
+  test("rejects malformed or all-zero context ids", () => {
+    expect(parseTraceparent("00-00000000000000000000000000000000-b7ad6b7169203331-01")).toBeNull();
+    expect(parseTraceparent("not-a-traceparent")).toBeNull();
   });
 });
 
@@ -105,6 +128,83 @@ describe("BeaconClient transport", () => {
     await client.flush();
     expect(client.pending).toBe(1);
   });
+
+  test("honours Retry-After and retries 429 responses", async () => {
+    let attempts = 0;
+    const delays: number[] = [];
+    const fakeFetch = mock(async () => {
+      attempts++;
+      return attempts === 1
+        ? new Response(null, { status: 429, headers: { "Retry-After": "0" } })
+        : new Response(null, { status: 202 });
+    }) as unknown as typeof fetch;
+    const client = new BeaconClient({
+      endpoint: "https://beacon.test",
+      token: "t",
+      resource,
+      flushIntervalMs: 0,
+      maxAttempts: 2,
+      fetch: fakeFetch,
+      sleep: async (delay) => { delays.push(delay); },
+    });
+    client.captureLogs({ resource, records: [{ timeUnixNano: "1", severityNumber: 9, severityText: "INFO", body: "ok", traceId: null, spanId: null, attributes: {} }] });
+    await client.flush();
+    expect(attempts).toBe(2);
+    expect(delays).toHaveLength(1);
+    expect(client.pending).toBe(0);
+  });
+
+  test("aborts timed-out requests without throwing into the app", async () => {
+    const fakeFetch = mock(async (_url: string | URL | Request, init?: RequestInit) => {
+      await new Promise((_, reject) => init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true }));
+      return new Response(null, { status: 202 });
+    }) as unknown as typeof fetch;
+    const client = new BeaconClient({
+      endpoint: "https://beacon.test",
+      token: "t",
+      resource,
+      flushIntervalMs: 0,
+      requestTimeoutMs: 5,
+      maxAttempts: 1,
+      fetch: fakeFetch,
+    });
+    client.captureLogs({ resource, records: [{ timeUnixNano: "1", severityNumber: 9, severityText: "INFO", body: "timeout", traceId: null, spanId: null, attributes: {} }] });
+    await client.flush();
+    expect(client.pending).toBe(1);
+  });
+
+  test("bounds the outage backlog and recursively redacts sensitive keys", async () => {
+    const bodies: string[] = [];
+    const fakeFetch = mock(async (_url: string | URL | Request, init?: RequestInit) => {
+      bodies.push(String(init?.body));
+      return new Response(null, { status: 503 });
+    }) as unknown as typeof fetch;
+    const client = new BeaconClient({
+      endpoint: "https://beacon.test",
+      token: "t",
+      resource,
+      flushIntervalMs: 0,
+      batchSize: 100,
+      maxAttempts: 1,
+      maxBacklogItems: 2,
+      fetch: fakeFetch,
+    });
+    const record = (body: string) => ({
+      resource,
+      records: [{
+        timeUnixNano: "1", severityNumber: 9, severityText: "INFO", body, traceId: null, spanId: null,
+        attributes: { request: { password: "clear", nested: { authorization: "Bearer secret" } } } as never,
+      }],
+    });
+    client.captureLogs(record("one"));
+    client.captureLogs(record("two"));
+    client.captureLogs(record("dropped"));
+    await client.flush();
+    expect(client.pending).toBe(2);
+    expect(bodies[0]).not.toContain("clear");
+    expect(bodies[0]).not.toContain("Bearer secret");
+    expect(bodies[0]).toContain("[CENSORED]");
+  });
 });
 
 describe("Tracer", () => {
@@ -144,6 +244,18 @@ describe("Beacon facade", () => {
     expect(beacon.client.pending).toBe(2);
     await beacon.flush();
     expect(beacon.client.pending).toBe(0);
+  });
+
+  test("applies deterministic trace sampling", async () => {
+    const fakeFetch = mock(async () => new Response(null, { status: 202 })) as unknown as typeof fetch;
+    const dropped = new Beacon({ endpoint: "https://beacon.test", token: "t", resource, flushIntervalMs: 0, tracesSampleRate: 0, fetch: fakeFetch });
+    dropped.captureSpans([new Tracer().startSpan("drop", "custom", { traceId: "00000000aaaaaaaaaaaaaaaaaaaaaaaa" }).end()]);
+    expect(dropped.client.pending).toBe(0);
+
+    const sampled = new Beacon({ endpoint: "https://beacon.test", token: "t", resource, flushIntervalMs: 0, tracesSampleRate: 0.5, fetch: fakeFetch });
+    sampled.captureSpans([new Tracer().startSpan("keep", "custom", { traceId: "00000000bbbbbbbbbbbbbbbbbbbbbbbb" }).end()]);
+    sampled.captureSpans([new Tracer().startSpan("drop", "custom", { traceId: "ffffffffcccccccccccccccccccccccc" }).end()]);
+    expect(sampled.client.pending).toBe(1);
   });
 });
 

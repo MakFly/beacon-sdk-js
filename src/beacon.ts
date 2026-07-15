@@ -13,7 +13,7 @@ import { Tracer } from "./tracer";
 
 export interface BeaconInit extends Omit<BeaconClientOptions, "sdk"> {}
 
-const SDK = { name: "beacon-sdk-js", version: "0.1.1" };
+const SDK = { name: "beacon-sdk-js", version: "0.2.0" };
 
 /** High-level entry point. Owns a transport client + a tracer. */
 export class Beacon {
@@ -36,6 +36,7 @@ export class Beacon {
   /** Emit finished spans (one trace) to the ingester. */
   captureSpans(spans: Span[]): void {
     if (spans.length === 0) return;
+    if (!this.client.shouldSampleTrace(spans[0]?.traceId)) return;
     this.client.captureTrace({
       resource: this.resource,
       scopes: [{ name: SDK.name, version: SDK.version, spans }],

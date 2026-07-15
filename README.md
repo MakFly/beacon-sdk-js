@@ -45,6 +45,14 @@ initBeacon({ endpoint, token, resource });
 getBeacon().captureException(err);
 ```
 
+The transport uses a 2s timeout, bounded retries for network errors, `408`, `429` and
+`5xx`, honours `Retry-After`, and keeps at most 200 pending payloads. Override with
+`requestTimeoutMs`, `maxAttempts`, `maxBacklogItems` and the retry delay options.
+`tracesSampleRate` applies deterministic head sampling. Sensitive keys are recursively
+redacted across errors, spans and logs; extend the defaults with `censorKeys`.
+W3C `traceparent`, `tracestate` and `baggage` helpers are exported through
+`injectTraceContext` and `extractTraceContext` for cross-service propagation.
+
 Also exported: `Beacon`, `BeaconClient`, `Tracer`, `buildErrorPayload`, `parseStack`,
 `generateTraceId` / `generateSpanId` / `generateUuid`, plus the full
 `@makfly/beacon-protocol` surface (re-exported).
