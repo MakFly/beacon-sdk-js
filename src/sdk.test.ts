@@ -261,6 +261,7 @@ describe("Beacon facade", () => {
 
 describe("explicit Next.js setup", () => {
   test("recognizes a complete instrumentation file", () => {
+    expect(setupSnippet()).toContain('process.env.BEACON_ENDPOINT ?? "https://ingest.pulseview.app"');
     expect(inspectInstrumentation(setupSnippet())).toEqual({
       hasBeaconImport: true,
       hasRegister: true,

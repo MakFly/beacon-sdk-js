@@ -1,6 +1,6 @@
 {
   "name": "@makfly/beacon-sdk-js",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Lean Beacon transport, manual tracing and server error capture for Next.js and Node.js.",
   "license": "MIT",
   "repository": {

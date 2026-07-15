@@ -5,6 +5,7 @@ import { getBeacon, initBeacon, type BeaconInit, type Beacon } from "./beacon";
  * Next.js 16 integration. Home-grown — no @vercel/otel, no @opentelemetry/*.
  *
  * Zero-config: `autoRegister()` reads BEACON_ENDPOINT + BEACON_TOKEN from env.
+ * The official hosted ingestion endpoint is used when only the token is configured.
  * BEACON_URL remains accepted as a backward-compatible endpoint alias.
  * If absent, Beacon is silently disabled (no network, no overhead).
  *
@@ -28,10 +29,12 @@ const STAGE_MAP: Record<string, ServiceStage> = {
   dev: "dev",
 };
 
+export const DEFAULT_BEACON_ENDPOINT = "https://ingest.pulseview.app";
+
 export function autoRegister(): Beacon | null {
-  const endpoint = process.env.BEACON_ENDPOINT ?? process.env.BEACON_URL;
+  const endpoint = process.env.BEACON_ENDPOINT ?? process.env.BEACON_URL ?? DEFAULT_BEACON_ENDPOINT;
   const token = process.env.BEACON_TOKEN;
-  if (!endpoint || !token) return null;
+  if (!token) return null;
 
   return initBeacon({
     endpoint,

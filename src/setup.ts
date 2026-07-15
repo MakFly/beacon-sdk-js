@@ -24,7 +24,7 @@ export function setupSnippet(): string {
 
 export function register() {
   registerBeacon({
-    endpoint: process.env.BEACON_ENDPOINT!,
+    endpoint: process.env.BEACON_ENDPOINT ?? "https://ingest.pulseview.app",
     token: process.env.BEACON_TOKEN!,
     resource: {
       "service.name": process.env.BEACON_SERVICE_NAME ?? "next-app",

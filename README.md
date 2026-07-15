@@ -27,7 +27,7 @@ import { registerBeacon, createOnRequestError } from "@makfly/beacon-sdk-js/next
 
 export function register() {
   registerBeacon({
-    endpoint: process.env.BEACON_ENDPOINT!,
+    endpoint: process.env.BEACON_ENDPOINT ?? "https://ingest.pulseview.app",
     token: process.env.BEACON_TOKEN!,
     resource: { "service.name": "iautos-web", "service.stage": "production" },
   });
@@ -35,6 +35,9 @@ export function register() {
 
 export const onRequestError = createOnRequestError();
 ```
+
+`https://ingest.pulseview.app` is the generated default. Set `BEACON_ENDPOINT` to
+override it for a self-hosted or internal Docker endpoint. A token is always required.
 
 ## Core API (framework-agnostic)
 

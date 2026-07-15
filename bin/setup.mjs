@@ -13,7 +13,7 @@ if (result.status === "ready") {
 
 if (result.status === "created") {
   console.log(`Created ${result.path}`);
-  console.log("Set BEACON_ENDPOINT, BEACON_TOKEN and BEACON_SERVICE_NAME to enable telemetry.");
+  console.log("Set BEACON_TOKEN and BEACON_SERVICE_NAME to enable telemetry. BEACON_ENDPOINT defaults to https://ingest.pulseview.app.");
   process.exit(0);
 }
 
