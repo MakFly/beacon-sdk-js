@@ -1,13 +1,24 @@
 # @makfly/beacon-sdk-js
 
-Beacon telemetry SDK for **Next.js 16 / browser / node** — errors, traces, logs.
-Home-grown, **zero OTel/Sentry dependency** (no `@opentelemetry/*`, no `@vercel/otel`).
+Lean Beacon transport, manual tracing and server error capture for **Next.js 16 / Node.js**.
 
 ```bash
 bun add @makfly/beacon-sdk-js
 ```
 
 `@makfly/beacon-protocol` is pulled in automatically (it's a dependency).
+
+Installation never modifies application files. To inspect an existing Next.js integration:
+
+```bash
+bunx beacon-setup
+```
+
+To create a new `instrumentation.ts` only when none exists:
+
+```bash
+bunx beacon-setup --write
+```
 
 ## Quickstart (Next.js 16 — `instrumentation.ts`)
 
@@ -16,7 +27,7 @@ import { registerBeacon, createOnRequestError } from "@makfly/beacon-sdk-js/next
 
 export function register() {
   registerBeacon({
-    endpoint: process.env.BEACON_URL!,
+    endpoint: process.env.BEACON_ENDPOINT!,
     token: process.env.BEACON_TOKEN!,
     resource: { "service.name": "iautos-web", "service.stage": "production" },
   });

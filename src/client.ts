@@ -99,7 +99,7 @@ export class BeaconClient {
         headers: {
           "Content-Type": "application/x-ndjson",
           "X-Beacon-Token": this.opts.token,
-          "X-Beacon-Sdk": `${this.opts.sdk?.name ?? "js"}/${this.opts.sdk?.version ?? "0.1.0"}`,
+          "X-Beacon-Sdk": `${this.opts.sdk?.name ?? "js"}/${this.opts.sdk?.version ?? "0.1.1"}`,
         },
         body: ndjson,
         keepalive: true,

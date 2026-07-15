@@ -5,7 +5,11 @@ import { buildErrorPayload } from "./errors";
 import { BeaconClient } from "./client";
 import { Tracer } from "./tracer";
 import { Beacon } from "./beacon";
+import { inspectInstrumentation, runSetup, setupSnippet } from "./setup";
 import { SpanStatusCode } from "@makfly/beacon-protocol";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const resource = { "service.name": "iautos-web", "service.stage": "production" as const };
 
@@ -140,5 +144,42 @@ describe("Beacon facade", () => {
     expect(beacon.client.pending).toBe(2);
     await beacon.flush();
     expect(beacon.client.pending).toBe(0);
+  });
+});
+
+describe("explicit Next.js setup", () => {
+  test("recognizes a complete instrumentation file", () => {
+    expect(inspectInstrumentation(setupSnippet())).toEqual({
+      hasBeaconImport: true,
+      hasRegister: true,
+      hasOnRequestError: true,
+      ready: true,
+    });
+  });
+
+  test("never mutates an existing incomplete instrumentation file", () => {
+    const root = mkdtempSync(join(tmpdir(), "beacon-setup-"));
+    const path = join(root, "instrumentation.ts");
+    const original = "export function register() {}\n";
+    writeFileSync(path, original);
+
+    try {
+      expect(runSetup(root, { write: true }).status).toBe("incomplete");
+      expect(readFileSync(path, "utf8")).toBe(original);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("creates a new integration only with explicit write mode", () => {
+    const root = mkdtempSync(join(tmpdir(), "beacon-setup-"));
+
+    try {
+      expect(runSetup(root).status).toBe("missing");
+      expect(runSetup(root, { write: true }).status).toBe("created");
+      expect(inspectInstrumentation(readFileSync(join(root, "instrumentation.ts"), "utf8")).ready).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

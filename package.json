@@ -1,7 +1,7 @@
 {
   "name": "@makfly/beacon-sdk-js",
-  "version": "0.1.0",
-  "description": "Beacon telemetry SDK for Next.js 16 / browser / node — errors, traces, logs. Home-grown, zero OTel/Sentry dependency.",
+  "version": "0.1.1",
+  "description": "Lean Beacon transport, manual tracing and server error capture for Next.js and Node.js.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -24,8 +24,7 @@
     "./presence": { "types": "./dist/presence.d.ts", "import": "./dist/presence.js" }
   },
   "scripts": {
-    "build": "bun build ./src/index.ts ./src/nextjs.ts --outdir ./dist --target node --external '@makfly/*' && bun build ./src/presence.ts --outdir ./dist --target browser --external '@makfly/*' && tsc --emitDeclarationOnly --declaration --outDir dist",
-    "postinstall": "node ./bin/setup.mjs || true",
+    "build": "bun build ./src/index.ts ./src/nextjs.ts ./src/setup.ts --outdir ./dist --target node --external '@makfly/*' && bun build ./src/presence.ts --outdir ./dist --target browser --external '@makfly/*' && tsc --emitDeclarationOnly --declaration --outDir dist",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

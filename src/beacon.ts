@@ -13,7 +13,7 @@ import { Tracer } from "./tracer";
 
 export interface BeaconInit extends Omit<BeaconClientOptions, "sdk"> {}
 
-const SDK = { name: "beacon-sdk-js", version: "0.1.0" };
+const SDK = { name: "beacon-sdk-js", version: "0.1.1" };
 
 /** High-level entry point. Owns a transport client + a tracer. */
 export class Beacon {

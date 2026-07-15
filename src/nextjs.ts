@@ -4,10 +4,12 @@ import { getBeacon, initBeacon, type BeaconInit, type Beacon } from "./beacon";
 /**
  * Next.js 16 integration. Home-grown — no @vercel/otel, no @opentelemetry/*.
  *
- * Zero-config: `autoRegister()` reads BEACON_URL + BEACON_TOKEN from env.
+ * Zero-config: `autoRegister()` reads BEACON_ENDPOINT + BEACON_TOKEN from env.
+ * BEACON_URL remains accepted as a backward-compatible endpoint alias.
  * If absent, Beacon is silently disabled (no network, no overhead).
  *
- * The postinstall script (`bin/setup.mjs`) patches instrumentation.ts automatically.
+ * Run `beacon-setup` to inspect an integration or `beacon-setup --write` to create a
+ * new instrumentation.ts file. Existing application code is never mutated automatically.
  */
 
 export function registerBeacon(init: BeaconInit): Beacon {
@@ -16,7 +18,8 @@ export function registerBeacon(init: BeaconInit): Beacon {
 
 /**
  * Auto-register from process.env. Returns the Beacon instance or null if disabled.
- * Reads: BEACON_URL, BEACON_TOKEN, BEACON_SERVICE_NAME, NODE_ENV, DEPLOYMENT_VERSION, GITHUB_SHA.
+ * Reads: BEACON_ENDPOINT (or BEACON_URL), BEACON_TOKEN, BEACON_SERVICE_NAME,
+ * NODE_ENV, DEPLOYMENT_VERSION, GITHUB_SHA.
  */
 const STAGE_MAP: Record<string, ServiceStage> = {
   production: "production",
@@ -26,7 +29,7 @@ const STAGE_MAP: Record<string, ServiceStage> = {
 };
 
 export function autoRegister(): Beacon | null {
-  const endpoint = process.env.BEACON_URL;
+  const endpoint = process.env.BEACON_ENDPOINT ?? process.env.BEACON_URL;
   const token = process.env.BEACON_TOKEN;
   if (!endpoint || !token) return null;
 
